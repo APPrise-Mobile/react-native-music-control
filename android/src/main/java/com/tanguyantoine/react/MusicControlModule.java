@@ -54,6 +54,7 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
     protected MusicControlNotification notification;
     private MusicControlListener.VolumeListener volume;
     private MusicControlReceiver receiver;
+    private HeadsetPlugReceiver headsetPlugReceiver;
 
     private Thread artworkThread;
 
@@ -147,6 +148,11 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         receiver = new MusicControlReceiver(this, context);
         context.registerReceiver(receiver, filter);
 
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction("android.intent.action.HEADSET_PLUG");
+        headsetPlugReceiver = new HeadsetPlugReceiver(this, context);
+        context.registerReceiver(headsetPlugReceiver, intentFilter);
+
         context.startService(new Intent(context, MusicControlNotification.NotificationService.class));
 
         context.registerComponentCallbacks(this);
@@ -167,6 +173,7 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         ReactApplicationContext context = getReactApplicationContext();
 
         context.unregisterReceiver(receiver);
+        context.unregisterReceiver(headsetPlugReceiver);
         context.unregisterComponentCallbacks(this);
 
         if (artworkThread != null && artworkThread.isAlive())
@@ -177,6 +184,7 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         notification = null;
         volume = null;
         receiver = null;
+        headsetPlugReceiver = null;
         state = null;
         md = null;
         pb = null;
