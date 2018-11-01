@@ -94,7 +94,7 @@ public class MusicControlNotification {
         builder.setSmallIcon(customIcon != 0 ? customIcon : smallIcon);
 
         // trying new media style
-        builder.setStyle(new NotificationCompat.MediaStyle().setMediaSession(module.session.getSessionToken()).setShowActionsInCompactView(0, 1, 2));
+        builder.setStyle(new android.support.v4.media.app.NotificationCompat.MediaStyle().setMediaSession(module.session.getSessionToken()).setShowActionsInCompactView(0, 1, 2));
         // Open the app when the notification is clicked
         String packageName = context.getPackageName();
         Intent openApp = context.getPackageManager().getLaunchIntentForPackage(packageName);
