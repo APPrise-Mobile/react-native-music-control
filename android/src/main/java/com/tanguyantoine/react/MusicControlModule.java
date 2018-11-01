@@ -1,9 +1,12 @@
 package com.tanguyantoine.react;
 
+import android.app.NotificationManager;
+import android.app.NotificationChannel;
 import android.content.ComponentCallbacks2;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -12,11 +15,15 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.os.SystemClock;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.RatingCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.support.v7.app.NotificationCompat;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.media.app.NotificationCompat.MediaStyle;
 import android.util.Log;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -54,8 +61,10 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
     private boolean isPlaying = false;
     private long controls = 0;
     protected int ratingType = RatingCompat.RATING_PERCENTAGE;
-    
+
     public NotificationClose notificationClose = NotificationClose.PAUSED;
+
+    public static final String CHANNEL_ID = "react-native-music-control";
 
     public MusicControlModule(ReactApplicationContext context) {
         super(context);
@@ -84,6 +93,17 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         return map;
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private void createChannel(ReactApplicationContext context) {
+        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, "Media playback", NotificationManager.IMPORTANCE_LOW);
+        mChannel.setDescription("Media playback controls");
+        mChannel.setShowBadge(false);
+        mChannel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+        mNotificationManager.createNotificationChannel(mChannel);
+    }
+
     public void init() {
         if (init) return;
 
@@ -107,8 +127,12 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         md = new MediaMetadataCompat.Builder();
         pb = new PlaybackStateCompat.Builder();
         pb.setActions(controls);
-        nb = new NotificationCompat.Builder(context);
-        nb.setStyle(new NotificationCompat.MediaStyle().setMediaSession(session.getSessionToken()));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createChannel(context);
+        }
+        nb = new NotificationCompat.Builder(context, CHANNEL_ID);
+        nb.setStyle(new MediaStyle().setMediaSession(session.getSessionToken()));
 
         state = pb.build();
 
@@ -131,10 +155,13 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         init = true;
     }
 
-    synchronized public void destroy() {
-        if(!init) return;
+    @ReactMethod
+    public void stopControl() {
+        if (!init)
+            return;
 
-        if (notification != null) notification.hide();
+        if (notification != null)
+            notification.hide();
         session.release();
 
         ReactApplicationContext context = getReactApplicationContext();
@@ -142,7 +169,8 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         context.unregisterReceiver(receiver);
         context.unregisterComponentCallbacks(this);
 
-        if(artworkThread != null && artworkThread.isAlive()) artworkThread.interrupt();
+        if (artworkThread != null && artworkThread.isAlive())
+            artworkThread.interrupt();
         artworkThread = null;
 
         session = null;
@@ -155,6 +183,10 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         nb = null;
 
         init = false;
+    }
+
+    synchronized public void destroy() {
+        stopControl();
     }
 
     @ReactMethod
@@ -201,13 +233,15 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
         md.putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, description);
         md.putText(MediaMetadataCompat.METADATA_KEY_DATE, date);
         md.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration);
-        md.putRating(MediaMetadataCompat.METADATA_KEY_RATING, rating);
+        if (android.os.Build.VERSION.SDK_INT > 19) {
+          md.putRating(MediaMetadataCompat.METADATA_KEY_RATING, rating);
+        }
 
         nb.setContentTitle(title);
         nb.setContentText(artist);
         nb.setContentInfo(album);
         nb.setColor(notificationColor);
-        
+
         notification.setCustomNotificationIcon(notificationIcon);
 
         if(metadata.hasKey("artwork")) {
@@ -228,7 +262,7 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
                 @Override
                 public void run() {
                     Bitmap bitmap = loadArtwork(artworkUrl, artworkLocal);
-                    
+
                     if(md != null) {
                         md.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, bitmap);
                         session.setMetadata(md.build());
@@ -237,7 +271,7 @@ public class MusicControlModule extends ReactContextBaseJavaModule implements Co
                         nb.setLargeIcon(bitmap);
                         notification.show(nb, isPlaying);
                     }
-                    
+
                     artworkThread = null;
                 }
             });

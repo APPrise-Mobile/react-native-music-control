@@ -29,11 +29,11 @@ export default class MusicControl {
     /**
      * Define state status.
      */
-    static STATE_PLAYING: NativeMusicControl //  Playing. Ex: when playing audio again.
-    static STATE_PAUSED: NativeMusicControl // Paused
-    static STATE_ERROR: NativeMusicControl // Error
-    static STATE_STOPPED: NativeMusicControl // Stopped
-    static STATE_BUFFERING: NativeMusicControl // Buffering
+    static STATE_PLAYING: string //  Playing. Ex: when playing audio again.
+    static STATE_PAUSED: string // Paused
+    static STATE_ERROR: string // Error
+    static STATE_STOPPED: string // Stopped
+    static STATE_BUFFERING: string // Buffering
 
     // Rating is not supported on iOS. This is kept here for compatibility
     // static RATING_HEART: 0;
@@ -100,6 +100,11 @@ export default class MusicControl {
     static off(eventName: ControlEvent, callback: Function): void
 
     /**
+     * Disable every audio controls.
+     */
+    static stopControl(): void
+
+    /**
      * It is possible to customize the icon used in the notification on Android. 
      * By default you can add a drawable resource to your package with the file name music_control_icon 
      * And the notification will use your custom icon. 
@@ -108,4 +113,11 @@ export default class MusicControl {
      * Keep in mind that just like with music_control_icon the resource specified has to be in the drawable package of your Android app.
      */
     // static setCustomNotificationIcon(path: string): void
+
+    /**
+     * Switch audio interruption handling.
+     * When handling is enabled, playback will be paused when application gets interrupted, and resumed after the interruption.
+     * @param enable
+     */
+    static handleAudioInterruptions(enable: boolean): void
 }
